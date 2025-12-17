@@ -107,6 +107,21 @@ Example:
 }
 ```
 
+## v0.2.0 Planned (Development branch)
+
+The next schema extension (v0.2.0) is currently under development
+on a dedicated branch and is not yet part of the stable release line.
+
+- Development branch: develop-v0.2
+- v0.1.x (master) remains the stable, production-ready line
+
+Planned additions in v0.2.0:
+- sources.csv (based on primary_location.source)
+- institutions.csv (derived from authorships)
+
+The v0.1 CSV schemas and columns will remain fully backward compatible
+and unchanged.
+
 ## Schema versions
 ### v0.1 (Minimum stable set; fixed columns)
 
