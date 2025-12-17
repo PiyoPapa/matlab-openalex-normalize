@@ -40,36 +40,24 @@ codegen/
 *.sbproj.bak
 
 # ----------------------------
-# OpenAlex pipeline: local outputs (DO NOT COMMIT)
+# OpenAlex normalize: outputs (DO NOT COMMIT)
 # ----------------------------
+data_processed/**
 
-# Results / cache folders
-data/**
+# transient folders
 cache/**
 tmp/**
 output/**
 logs/**
 
-# Keep empty folders if you want
-!data/.gitkeep
 !cache/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep
 
-# Large / generated data files
-*.mat
-*.jsonl
-*.json
-*.ndjson
-
-# Common exports created during experiments
-*.csv
-*.tsv
-*.parquet
-*.h5
-*.hdf5
-
-# MATLAB session junk (optional but practical)
-*.log
-.DS_Store
-Thumbs.db
+# ----------------------------
+# Sample inputs (OK to commit)
+# ----------------------------
+data_raw/**
+!data_raw/.gitkeep
+!data_raw/*.jsonl
+!data_raw/*.standard.jsonl

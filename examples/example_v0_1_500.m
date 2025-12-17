@@ -60,7 +60,7 @@ fprintf("\n=== Step 3: normalize_openalex (v0.1) ===\n");
 
 % Derive output folder name from written record count if available
 if exist("convSummary","var") && isfield(convSummary,"records_written")
-    outDir = fullfile(outBase, runTag + "_n" + string(convSummary.records_written));
+    outDir = fullfile(outBase, runTag + "_n" + string(maxRecords));
 else
     outDir = fullfile(outBase, runTag + "_nUNK");
 end
