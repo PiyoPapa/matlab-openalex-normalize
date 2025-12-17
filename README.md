@@ -1,4 +1,5 @@
 # matlab-openalex-normalize
+[![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=PiyoPapa/matlab-openalex-normalize)
 
 A MATLAB-based normalization layer for OpenAlex Works data (Works JSONL -> versioned CSV).
 

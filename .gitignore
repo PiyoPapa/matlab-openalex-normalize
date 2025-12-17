@@ -49,10 +49,13 @@ cache/**
 tmp/**
 output/**
 logs/**
+resources/project/**
 
 !cache/.gitkeep
 !output/.gitkeep
 !logs/.gitkeep
+
+
 
 # ----------------------------
 # Sample inputs (OK to commit)
