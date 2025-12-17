@@ -1,0 +1,21 @@
+work_id,concept_id,concept_display_name,concept_level,concept_score
+https://openalex.org/W7114984451,https://openalex.org/C42156128,Total harmonic distortion,3,0.76774
+https://openalex.org/W7114984451,https://openalex.org/C11190779,Inverter,3,0.67271
+https://openalex.org/W7114984451,https://openalex.org/C41008148,Computer science,0,0.647
+https://openalex.org/W7114984451,https://openalex.org/C38264464,DSPACE,2,0.61468
+https://openalex.org/W7114984451,https://openalex.org/C188573790,Renewable energy,2,0.59762
+https://openalex.org/W7114984451,https://openalex.org/C165801399,Voltage,2,0.58735
+https://openalex.org/W7114984451,https://openalex.org/C197424946,Waveform,3,0.57426
+https://openalex.org/W7114984451,https://openalex.org/C2779478453,Modularity (biology),2,0.57249
+https://openalex.org/W7114984451,https://openalex.org/C127934551,Harmonic,2,0.44273
+https://openalex.org/W7114984451,https://openalex.org/C184720557,Topology (electrical circuits),2,0.43215
+https://openalex.org/W7114984451,https://openalex.org/C24326235,Electronic engineering,1,0.39005
+https://openalex.org/W7114984451,https://openalex.org/C171146098,Automotive engineering,1,0.36923
+https://openalex.org/W7114984451,https://openalex.org/C2742236,Efficient energy use,2,0.35769
+https://openalex.org/W7114984451,https://openalex.org/C186370098,Energy (signal processing),2,0.35017
+https://openalex.org/W7114984451,https://openalex.org/C126780896,Distortion (music),4,0.33973
+https://openalex.org/W7114984451,https://openalex.org/C119599485,Electrical engineering,1,0.33726
+https://openalex.org/W7114984451,https://openalex.org/C199845137,Network topology,2,0.30498
+https://openalex.org/W7114984451,https://openalex.org/C2776422217,Electric vehicle,3,0.29383
+https://openalex.org/W7114984451,https://openalex.org/C35398282,Grid-tie inverter,5,0.27409
+https://openalex.org/W7114984451,https://openalex.org/C131770355,Harmonic analysis,2,0.2627

@@ -1,0 +1,75 @@
+# Autosave files
+*.asv
+*.m~
+*.autosave
+*.slx.r*
+*.mdl.r*
+
+# Derived content-obscured files
+*.p
+
+# Compiled MEX files
+*.mex*
+
+# Packaged app and toolbox files
+*.mlappinstall
+*.mltbx
+
+# Deployable archives
+*.ctf
+
+# Generated helpsearch folders
+helpsearch*/
+
+# Code generation folders
+slprj/
+sccprj/
+codegen/
+
+# Cache files
+*.slxc
+
+# Cloud based storage dotfile
+.MATLABDriveTag
+
+# buildtool cache folder
+.buildtool/
+
+# SimBiology backup files
+*.sbproj.backup
+*.sbproj.bak
+
+# ----------------------------
+# OpenAlex pipeline: local outputs (DO NOT COMMIT)
+# ----------------------------
+
+# Results / cache folders
+data/**
+cache/**
+tmp/**
+output/**
+logs/**
+
+# Keep empty folders if you want
+!data/.gitkeep
+!cache/.gitkeep
+!output/.gitkeep
+!logs/.gitkeep
+
+# Large / generated data files
+*.mat
+*.jsonl
+*.json
+*.ndjson
+
+# Common exports created during experiments
+*.csv
+*.tsv
+*.parquet
+*.h5
+*.hdf5
+
+# MATLAB session junk (optional but practical)
+*.log
+.DS_Store
+Thumbs.db
