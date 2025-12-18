@@ -16,14 +16,14 @@ Related repos:
 - `matlab-openalex-normalize` (this repo; normalize to versioned CSV)
 
 ## Scope (What this repo does / does not do)
-### Non-goals (v0.1)
+### Non-goals
 
 This project is **not** intended to be:
 - a full-text mining or NLP pipeline
 - a citation-network or reference-graph analysis engine
 - a general-purpose OpenAlex client covering all use cases
 
-Instead, v0.1 focuses on:
+Instead, this repository focuses on:
 - stable, versioned normalization
 - reproducible metadata analysis
 - MATLAB-centric research and educational workflows
@@ -107,20 +107,18 @@ Example:
 }
 ```
 
-## v0.2.0 Planned (Development branch)
+## v0.2 (Extension schema)
 
-The next schema extension (v0.2.0) is currently under development
-on a dedicated branch and is not yet part of the stable release line.
+v0.2 extends v0.1 while keeping all v0.1 CSV schemas/columns unchanged.
 
-- Development branch: develop-v0.2
-- v0.1.x (master) remains the stable, production-ready line
+Additions in v0.2:
+- `sources.csv` (based on `primary_location.source`)
 
-Planned additions in v0.2.0:
-- sources.csv (based on primary_location.source)
-- institutions.csv (derived from authorships)
+Planned additions (future):
+- `institutions.csv` (derived from authorships; institution-level analysis)
 
-The v0.1 CSV schemas and columns will remain fully backward compatible
-and unchanged.
+The v0.1 CSV schemas and columns remain fully backward compatible and unchanged.
+
 
 ## Schema versions
 ### v0.1 (Minimum stable set; fixed columns)
@@ -144,7 +142,14 @@ Produces exactly 3 CSV files (columns are fixed for the v0.1 line):
 Adds:
 
 4. **sources.csv**
-    - Uses primary_location.source as the standard source definition
+    - Uses `primary_location.source` as the standard source definition
+    - Some Works legitimately have **no source** in OpenAlex metadata
+      (e.g., certain book-chapters / Crossref-derived records). These Works:
+        - are still included in `works.csv`
+        - are counted in QA as `missing primary_location.source`
+        - do not contribute to `sources.csv`
+    - When QA is enabled, missing-source Work IDs are printed to the console/log
+      for reproducibility and downstream inspection
 
 5. **institutions.csv**
     - Derived from authorships (institution-level analysis)
@@ -238,11 +243,19 @@ normalize_openalex(inJsonl, outDir, ...
     "verbose",true);
 ```
 
-Outputs:
+### v0.2 example
+```matlab
+normalize_openalex(inJsonl, outDir, ...
+"schemaVersion","v0.2", ...
+"verbose",true);
+```
+
+Outputs (v0.2):
 - run_manifest.json
 - works.csv
 - authorships.csv
 - concepts.csv
+- sources.csv
 
 ### Design principles
 - Separation of concerns: acquisition vs normalization

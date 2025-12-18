@@ -21,11 +21,12 @@ arguments
     options.verbose (1,1) logical = true
     options.maxRecords (1,1) double = inf
     options.overwrite (1,1) logical = false
+    options.debug (1,1) logical = false
 end
 
 schemaVersion = options.schemaVersion;
-if schemaVersion ~= "v0.1"
-    error("Only schemaVersion=v0.1 is supported in this template. Got: %s", schemaVersion);
+if ~(schemaVersion == "v0.1" || schemaVersion == "v0.2")
+    error("Only schemaVersion=v0.1 or v0.2 is supported. Got: %s", schemaVersion);
 end
 
 % ---------- Prepare output folder ----------
@@ -34,9 +35,10 @@ if isfolder(outDir)
         error("Output folder already exists: %s (set overwrite=true to proceed)", outDir);
     end
     % overwrite=true: clear existing files to avoid mixing schemas
-    delete(fullfile(outDir, "*.csv"));
-    delete(fullfile(outDir, "*.json"));
-    delete(fullfile(outDir, "*.txt"));
+    % (some MATLAB/OS combos error when pattern matches nothing)
+    try, delete(fullfile(outDir, "*.csv")); catch, end
+    try, delete(fullfile(outDir, "*.json")); catch, end
+    try, delete(fullfile(outDir, "*.txt")); catch, end
 else
     mkdir(outDir);
 end
@@ -73,6 +75,14 @@ lineNo = 0;
 processed = 0;
 writtenWorks = 0;
 skippedMissingRequired = 0;
+
+% v0.2: sources aggregation (primary_location.source)
+sourcesMap = [];
+missingPrimarySource = 0;
+missingPrimarySourceId = 0;
+if string(schemaVersion) == "v0.2"
+    sourcesMap = containers.Map("KeyType","char","ValueType","any");
+end
 
 % If you want small logs, keep them bounded.
 logPath = fullfile(outDir, "normalize.log.txt");
@@ -122,6 +132,18 @@ while true
     end
 
     % ---------- works.csv ----------
+    % v0.2: collect sources (primary_location.source)
+    if string(schemaVersion) == "v0.2"
+        try
+            [sourcesMap, hadSource, hadSourceId] = update_sources_map(sourcesMap, w);
+            if ~hadSource, missingPrimarySource = missingPrimarySource + 1; end
+            if ~hadSourceId, missingPrimarySourceId = missingPrimarySourceId + 1; end
+        catch
+            % count as missing both (keep running)
+            missingPrimarySource = missingPrimarySource + 1;
+            missingPrimarySourceId = missingPrimarySourceId + 1;
+        end
+    end
     doi  = safe_get_str(w, "doi");
     ttl  = safe_get_str(w, "title");
     pdat = safe_get_str(w, "publication_date");
@@ -190,6 +212,19 @@ manifest.tool = "matlab-openalex-normalize";
 manifest.matlab_release = version; % e.g., "9.18.0.1234567 (R2025b)"
 manifest.git_commit = get_git_commit_safe();
 manifest.errors = struct("skipped_missing_required", skippedMissingRequired);
+
+% ---------- v0.2: write sources.csv ----------
+if string(schemaVersion) == "v0.2"
+    try
+        srcStats = schema.v0_2.write_sources_csv(outDir, sourcesMap);
+        manifest.written_sources = srcStats.written_sources;
+        manifest.unique_sources = srcStats.unique_sources;
+        manifest.errors.missing_primary_location_source = missingPrimarySource;
+        manifest.errors.missing_primary_location_source_id = missingPrimarySourceId;
+    catch ME
+        manifest.errors.sources_write_failed = char(ME.message);
+    end
+end
 
 % Write JSON (pretty if available)
 manifestPath = fullfile(outDir, "run_manifest.json");
@@ -404,4 +439,67 @@ end
 
 function y = ifelse(cond, a, b)
 if cond, y = a; else, y = b; end
+end
+
+% ===================== v0.2: sources helpers =====================
+function [mp, hadSource, hadSourceId] = update_sources_map(mp, w)
+% Aggregate primary_location.source by source_id (OpenAlex URL).
+hadSource = false;
+hadSourceId = false;
+
+if ~isstruct(w) || ~isfield(w,"primary_location") || ~isstruct(w.primary_location)
+    return
+end
+
+pl = w.primary_location;
+if ~isfield(pl,"source")
+    return
+end
+
+s = pl.source;
+% normalize possible container types
+if iscell(s), s = s{1}; end
+if isstruct(s) && numel(s) >= 1, s = s(1); end
+
+% Decide whether "source exists"
+if ~isstruct(s) || isempty(fieldnames(s))
+    return
+end
+hadSource = true;
+
+if ~isfield(s,"id") || isempty(s.id)
+    return
+end
+hadSourceId = true;
+
+sid = string(s.id);
+key = char(sid);
+
+if isKey(mp, key)
+    rec = mp(key);
+    rec.works_count_seen = rec.works_count_seen + 1;
+else
+    rec = struct();
+    rec.source_id = sid;
+    rec.source_display_name = getfield_or(s,"display_name","");
+    rec.source_type = getfield_or(s,"type","");
+    rec.issn_l = getfield_or(s,"issn_l","");
+    rec.is_oa = getfield_or(s,"is_oa",[]);
+    rec.host_organization_id = getfield_or(s,"host_organization","");
+    rec.works_count_seen = 1;
+end
+
+mp(key) = rec;
+end
+
+function v = getfield_or(st, f, default)
+if ~isstruct(st) || ~isfield(st,f)
+    v = default; return
+end
+v0 = st.(f);
+if isempty(v0)
+    v = default;
+else
+    v = v0;
+end
 end
