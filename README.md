@@ -229,6 +229,43 @@ Outputs:
 - authorships.csv
 - concepts.csv
 
+* * *
+## FAQ
+
+### What input format is accepted?
+Only **standard JSONL** is accepted: `1 line = 1 OpenAlex Work object`.
+If your input is array-per-line JSONL (from `matlab-openalex-pipeline`), convert it first.
+
+### How do I convert pipeline output to standard JSONL?
+Use the pipeline helper (recommended):
+
+    inJsonl  = "data/openalex_....jsonl";
+    outJsonl = "data/openalex_....standard.jsonl";
+    n = openalex_write_jsonl(inJsonl, outJsonl);
+
+### What does v0.1 produce?
+v0.1 produces exactly these fixed-schema CSVs:
+`works.csv`, `authorships.csv`, `concepts.csv` (plus `run_manifest.json`).
+
+### What does v0.2 add?
+v0.2 extends outputs (while keeping v0.1 unchanged), e.g. `sources.csv`, `institutions.csv` (as defined in the README).
+
+### Does this repo deduplicate or “clean” OpenAlex data?
+No. It normalizes structure into a stable schema. If you need heavy cleaning/deduplication, do it downstream.
+
+### How are IDs represented?
+Primary keys are kept stable using OpenAlex URL strings (e.g., `work_id`, `author_id`, `source_id`).
+
+### Why are references not included?
+Because `references` can explode row counts. It is intentionally postponed and (if added) must be optional and limited.
+
+### Excel / UTF-8: why do characters break?
+CSVs are written in UTF-8. Excel on Windows may mis-detect encoding; select UTF-8 explicitly when opening.
+
+### How large can this scale?
+Normalization is streaming-first where possible, but CSVs are an intermediate format.
+For very large datasets, load results into a database/Parquet/other backend of your choice.
+
 ### Design principles
 - Separation of concerns: acquisition vs normalization
 - Streaming-first (avoid holding everything in memory)
