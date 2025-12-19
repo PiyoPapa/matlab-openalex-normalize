@@ -1,7 +1,7 @@
 # matlab-openalex-normalize
 [![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=PiyoPapa/matlab-openalex-normalize)
 
-A MATLAB-based normalization layer for OpenAlex Works data (Works JSONL -> versioned CSV).
+Normalize standard OpenAlex API JSONL into fixed-schema CSVs in MATLAB (sources, venues, manifests)
 
 This repository converts **standard JSONL (1 Work per line)** into a small set of
 **versioned, analysis-ready CSVs**.
@@ -16,14 +16,14 @@ Related repos:
 - `matlab-openalex-normalize` (this repo; normalize to versioned CSV)
 
 ## Scope (What this repo does / does not do)
-### Non-goals
+### Non-goals (v0.1)
 
 This project is **not** intended to be:
 - a full-text mining or NLP pipeline
 - a citation-network or reference-graph analysis engine
 - a general-purpose OpenAlex client covering all use cases
 
-Instead, this repository focuses on:
+Instead, v0.1 focuses on:
 - stable, versioned normalization
 - reproducible metadata analysis
 - MATLAB-centric research and educational workflows
@@ -107,19 +107,6 @@ Example:
 }
 ```
 
-## v0.2 (Extension schema)
-
-v0.2 extends v0.1 while keeping all v0.1 CSV schemas/columns unchanged.
-
-Additions in v0.2:
-- `sources.csv` (based on `primary_location.source`)
-
-Planned additions (future):
-- `institutions.csv` (derived from authorships; institution-level analysis)
-
-The v0.1 CSV schemas and columns remain fully backward compatible and unchanged.
-
-
 ## Schema versions
 ### v0.1 (Minimum stable set; fixed columns)
 
@@ -142,14 +129,7 @@ Produces exactly 3 CSV files (columns are fixed for the v0.1 line):
 Adds:
 
 4. **sources.csv**
-    - Uses `primary_location.source` as the standard source definition
-    - Some Works legitimately have **no source** in OpenAlex metadata
-      (e.g., certain book-chapters / Crossref-derived records). These Works:
-        - are still included in `works.csv`
-        - are counted in QA as `missing primary_location.source`
-        - do not contribute to `sources.csv`
-    - When QA is enabled, missing-source Work IDs are printed to the console/log
-      for reproducibility and downstream inspection
+    - Uses primary_location.source as the standard source definition
 
 5. **institutions.csv**
     - Derived from authorships (institution-level analysis)
@@ -243,19 +223,48 @@ normalize_openalex(inJsonl, outDir, ...
     "verbose",true);
 ```
 
-### v0.2 example
-```matlab
-normalize_openalex(inJsonl, outDir, ...
-"schemaVersion","v0.2", ...
-"verbose",true);
-```
-
-Outputs (v0.2):
+Outputs:
 - run_manifest.json
 - works.csv
 - authorships.csv
 - concepts.csv
-- sources.csv
+
+* * *
+## FAQ
+
+### What input format is accepted?
+Only **standard JSONL** is accepted: `1 line = 1 OpenAlex Work object`.
+If your input is array-per-line JSONL (from `matlab-openalex-pipeline`), convert it first.
+
+### How do I convert pipeline output to standard JSONL?
+Use the pipeline helper (recommended):
+
+    inJsonl  = "data/openalex_....jsonl";
+    outJsonl = "data/openalex_....standard.jsonl";
+    n = openalex_write_jsonl(inJsonl, outJsonl);
+
+### What does v0.1 produce?
+v0.1 produces exactly these fixed-schema CSVs:
+`works.csv`, `authorships.csv`, `concepts.csv` (plus `run_manifest.json`).
+
+### What does v0.2 add?
+v0.2 extends outputs (while keeping v0.1 unchanged), e.g. `sources.csv`, `institutions.csv` (as defined in the README).
+
+### Does this repo deduplicate or "clean" OpenAlex data?
+No. It normalizes structure into a stable schema. If you need heavy cleaning/deduplication, do it downstream.
+
+### How are IDs represented?
+Primary keys are kept stable using OpenAlex URL strings (e.g., `work_id`, `author_id`, `source_id`).
+
+### Why are references not included?
+Because `references` can explode row counts. It is intentionally postponed and (if added) must be optional and limited.
+
+### Excel / UTF-8: why do characters break?
+CSVs are written in UTF-8. Excel on Windows may mis-detect encoding; select UTF-8 explicitly when opening.
+
+### How large can this scale?
+Normalization is streaming-first where possible, but CSVs are an intermediate format.
+For very large datasets, load results into a database/Parquet/other backend of your choice.
 
 ### Design principles
 - Separation of concerns: acquisition vs normalization
@@ -263,5 +272,21 @@ Outputs (v0.2):
 - Schema is versioned and fixed per version
 - Defaults avoid "row explosion" features (e.g., references)
 
-## License
-MIT
+## Disclaimer 
+The author is an employee of MathWorks Japan. 
+This repository is a personal experimental project developed independently and is not part of any MathWorks product, service, or official content. 
+MathWorks does not review, endorse, support, or maintain this repository. 
+All opinions and implementations are solely those of the author.
+
+## License 
+MIT License. See the LICENSE file for details. 
+
+## A note for contributors 
+This repository prioritizes: 
+- clarity over abstraction
+- reproducibility over convenience
+- explicit configuration over magic defaults 
+
+## Contact 
+This project is maintained on a best-effort basis and does not provide official support. 
+If you plan to extend it, please preserve these principles.
