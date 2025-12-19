@@ -22,6 +22,8 @@ arguments
     options.maxRecords (1,1) double = inf
     options.overwrite (1,1) logical = false
     options.debug (1,1) logical = false
+    % v0.2 QA reproducibility: store up to N missing-source work_ids in manifest
+    options.maxMissingWorkIds (1,1) double = 1000
 end
 
 schemaVersion = options.schemaVersion;
@@ -80,6 +82,8 @@ skippedMissingRequired = 0;
 sourcesMap = [];
 missingPrimarySource = 0;
 missingPrimarySourceId = 0;
+missingPrimarySourceWorkIds = strings(0,1);
+maxMissingIds = max(0, floor(options.maxMissingWorkIds));
 if string(schemaVersion) == "v0.2"
     sourcesMap = containers.Map("KeyType","char","ValueType","any");
 end
@@ -138,10 +142,18 @@ while true
             [sourcesMap, hadSource, hadSourceId] = update_sources_map(sourcesMap, w);
             if ~hadSource, missingPrimarySource = missingPrimarySource + 1; end
             if ~hadSourceId, missingPrimarySourceId = missingPrimarySourceId + 1; end
+            if ~hadSource
+                if maxMissingIds > 0 && numel(missingPrimarySourceWorkIds) < maxMissingIds
+                    missingPrimarySourceWorkIds(end+1,1) = string(workId); %#ok<AGROW>
+                end
+            end
         catch
             % count as missing both (keep running)
             missingPrimarySource = missingPrimarySource + 1;
             missingPrimarySourceId = missingPrimarySourceId + 1;
+            if maxMissingIds > 0 && numel(missingPrimarySourceWorkIds) < maxMissingIds
+                missingPrimarySourceWorkIds(end+1,1) = string(workId); %#ok<AGROW>
+            end
         end
     end
     doi  = safe_get_str(w, "doi");
@@ -219,8 +231,14 @@ if string(schemaVersion) == "v0.2"
         srcStats = schema.v0_2.write_sources_csv(outDir, sourcesMap);
         manifest.written_sources = srcStats.written_sources;
         manifest.unique_sources = srcStats.unique_sources;
+        % Backward-compatible keys (kept for older scripts)
         manifest.errors.missing_primary_location_source = missingPrimarySource;
         manifest.errors.missing_primary_location_source_id = missingPrimarySourceId;
+
+        % Preferred keys (README-facing)
+        manifest.errors.missing_primary_location_source_count = missingPrimarySource;
+        manifest.errors.missing_primary_location_source_id_count = missingPrimarySourceId;
+        manifest.errors.missing_primary_location_source_work_ids = cellstr(missingPrimarySourceWorkIds);
     catch ME
         manifest.errors.sources_write_failed = char(ME.message);
     end
