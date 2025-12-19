@@ -1,7 +1,7 @@
 # matlab-openalex-normalize
 [![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=PiyoPapa/matlab-openalex-normalize)
 
-Normalize standard OpenAlex API JSONL into fixed-schema CSVs in MATLAB (sources, venues, manifests)
+Normalize standard OpenAlex Works JSONL into fixed-schema CSVs in MATLAB (versioned CSV + run_manifest)
 
 This repository converts **standard JSONL (1 Work per line)** into a small set of
 **versioned, analysis-ready CSVs**.
@@ -16,14 +16,14 @@ Related repos:
 - `matlab-openalex-normalize` (this repo; normalize to versioned CSV)
 
 ## Scope (What this repo does / does not do)
-### Non-goals (v0.1)
+### Non-goals
 
 This project is **not** intended to be:
 - a full-text mining or NLP pipeline
 - a citation-network or reference-graph analysis engine
 - a general-purpose OpenAlex client covering all use cases
 
-Instead, v0.1 focuses on:
+Instead, this repository focuses on:
 - stable, versioned normalization
 - reproducible metadata analysis
 - MATLAB-centric research and educational workflows
@@ -92,18 +92,27 @@ CSV encoding:
 - `matlab_release` (if available)
 - `errors` (summary counts, optional)
 
-Example:
+Example (v0.2):
 
 ```json
 {
-  "schema_version": "v0.1",
-  "timestamp": "2025-12-16T08:15:00+09:00",
+  "schema_version": "v0.2",
+  "timestamp": "2025-12-19T21:50:48+09:00",
   "input_path": "data/openalex_MATLAB_cursor_en.standard.jsonl",
-  "processed_records": 10000,
-  "git_commit": "abc1234",
+  "processed_records": 500,
+  "written_works": 500,
+  "written_sources": 168,
+  "unique_sources": 168,
+  "git_commit": "94442e1",
   "tool": "matlab-openalex-normalize",
   "matlab_release": "R2025b",
-  "errors": { "skipped_missing_required": 12 }
+  "errors": {
+    "missing_primary_location_source_count": 5,
+    "missing_primary_location_source_work_ids": [
+      "https://openalex.org/W4417279310",
+      "https://openalex.org/W4417302039"
+    ]
+  }
 }
 ```
 
@@ -126,19 +135,40 @@ Produces exactly 3 CSV files (columns are fixed for the v0.1 line):
 
 ### v0.2 (Extension; v0.1 unchanged)
 
+v0.2 extends v0.1 without changing any v0.1 CSV schemas/columns.
+
+#### v0.2.0 (core extension)
 Adds:
 
 4. **sources.csv**
-    - Uses primary_location.source as the standard source definition
+   - Uses `primary_location.source` as the standard source definition
+   - Some Works legitimately have no source in OpenAlex metadata (e.g., some book-chapters).
+     These Works remain in `works.csv` but do not contribute to `sources.csv`.
+
+   **Columns (v0.2.0):**
+   - `source_id` (string): OpenAlex Source ID (URL)
+   - `source_display_name` (string, nullable)
+   - `source_type` (string, nullable; e.g., journal, conference, book)
+   - `issn_l` (string, nullable)
+   - `is_oa` (logical/bool, nullable)
+   - `host_organization_id` (string, nullable)
+   - `works_count_seen` (double/int): number of Works associated with this source
+
+Also improves `run_manifest.json`:
+   - `errors.missing_primary_location_source_count`
+   - `errors.missing_primary_location_source_work_ids` (optional; for reproducibility)
+
+#### v0.2.x (optional additions)
+Planned (may ship as a minor v0.2 release):
 
 5. **institutions.csv**
-    - Derived from authorships (institution-level analysis)
+   - Derived from authorships (institution-level analysis)
+   - Full expansion of multi-institution authorships may increase row counts and is therefore versioned explicitly.
 
-6. **(reserved)**
-    - references is intentionally NOT included
-
-7. **counts_by_year.csv (planned)**
-    - in future
+#### Out of scope for v0.2 (deferred to v0.3+)
+- references (row explosion; must be optional + limited)
+- counts_by_year.csv
+- abstracts / reconstructed plaintext fields
 
 ### v0.3 (Planned; optional)
 
@@ -248,9 +278,11 @@ v0.1 produces exactly these fixed-schema CSVs:
 `works.csv`, `authorships.csv`, `concepts.csv` (plus `run_manifest.json`).
 
 ### What does v0.2 add?
-v0.2 extends outputs (while keeping v0.1 unchanged), e.g. `sources.csv`, `institutions.csv` (as defined in the README).
+v0.2 extends outputs (while keeping v0.1 unchanged).
+In v0.2.0, this includes `sources.csv`; additional CSVs such as `institutions.csv`
+may be introduced in minor v0.2.x releases as described above.
 
-### Does this repo deduplicate or “clean” OpenAlex data?
+### Does this repo deduplicate or "clean" OpenAlex data?
 No. It normalizes structure into a stable schema. If you need heavy cleaning/deduplication, do it downstream.
 
 ### How are IDs represented?
