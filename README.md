@@ -272,5 +272,21 @@ For very large datasets, load results into a database/Parquet/other backend of y
 - Schema is versioned and fixed per version
 - Defaults avoid "row explosion" features (e.g., references)
 
-## License
-MIT
+## Disclaimer 
+The author is an employee of MathWorks Japan. 
+This repository is a personal experimental project developed independently and is not part of any MathWorks product, service, or official content. 
+MathWorks does not review, endorse, support, or maintain this repository. 
+All opinions and implementations are solely those of the author.
+
+## License 
+MIT License. See the LICENSE file for details. 
+
+## A note for contributors 
+This repository prioritizes: 
+- clarity over abstraction
+- reproducibility over convenience
+- explicit configuration over magic defaults 
+
+## Contact 
+This project is maintained on a best-effort basis and does not provide official support. 
+If you plan to extend it, please preserve these principles.
