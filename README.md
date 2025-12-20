@@ -6,6 +6,11 @@ Normalize standard OpenAlex Works JSONL into fixed-schema CSVs in MATLAB (versio
 This repository converts **standard JSONL (1 Work per line)** into a small set of
 **versioned, analysis-ready CSVs**.
 
+> **Version note**
+>
+> The behavior described below reflects the implementation as of **v0.2.2**.
+> Earlier versions may differ in error handling details.
+ 
 It is intentionally separated from the data acquisition layer:
 
 - **Acquisition (fetch):**
@@ -90,7 +95,7 @@ CSV encoding:
 - `git_commit` (if available)
 - `tool` (e.g., "matlab-openalex-normalize")
 - `matlab_release` (if available)
-- `errors` (summary counts, optional)
+- `errors` (always present; fixed schema from v0.2.2)
 
 Example (v0.2):
 
@@ -108,6 +113,9 @@ Example (v0.2):
   "matlab_release": "R2025b",
   "errors": {
     "missing_primary_location_source_count": 5,
+    "missing_primary_location_source_id_count": 5,
+    "sources_write_failed": false,
+    "sources_write_error_message": "",
     "missing_primary_location_source_work_ids": [
       "https://openalex.org/W4417279310",
       "https://openalex.org/W4417302039"
@@ -115,6 +123,28 @@ Example (v0.2):
   }
 }
 ```
+
+### Notes on errors (v0.2.2)
+
+From v0.2.2, the errors object in run_manifest.json follows a fixed schema.
+All keys listed below are always present, even if their values are zero or empty:
+
+- missing_primary_location_source_count
+- missing_primary_location_source_id_count
+- missing_primary_location_source_work_ids
+- sources_write_failed
+- sources_write_error_message
+
+This allows downstream code to rely on the presence and type of errors fields
+without conditional existence checks.
+
+> Backward compatibility
+>
+> Some legacy error keys (e.g.,
+> `errors.missing_primary_location_source`,
+> `errors.missing_primary_location_source_id`)
+> may still be present ...
+
 
 ## Schema versions
 ### v0.1 (Minimum stable set; fixed columns)
@@ -157,6 +187,15 @@ Adds:
 Also improves `run_manifest.json`:
    - `errors.missing_primary_location_source_count`
    - `errors.missing_primary_location_source_work_ids` (optional; for reproducibility)
+
+> Note on sources.csv (v0.2.2)
+>
+> Writing sources.csv may fail in some runs (e.g., filesystem-related issues).
+> In such cases:
+>
+> - normalization continues
+> - other CSV outputs are still written
+> - the failure is recorded in run_manifest.json.errors
 
 #### v0.2.x (optional additions)
 Planned (may ship as a minor v0.2 release):

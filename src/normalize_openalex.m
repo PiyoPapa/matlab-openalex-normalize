@@ -32,13 +32,36 @@ if ~(schemaVersion == "v0.1" || schemaVersion == "v0.2")
 end
 
 % ---------- Prepare output folder ----------
+% Guard: outDir must not be an existing file
+if exist(outDir, "file") == 2 && ~isfolder(outDir)
+    error("Output path exists as a file (must be a folder): %s", outDir);
+end
+
 if isfolder(outDir)
     if ~options.overwrite
         error("Output folder already exists: %s (set overwrite=true to proceed)", outDir);
     end
     % overwrite=true: clear existing files to avoid mixing schemas
     % (some MATLAB/OS combos error when pattern matches nothing)
-    try, delete(fullfile(outDir, "*.csv")); catch, end
+    % Clean previous CSV files, but DO NOT remove sources.csv if it is a directory.
+    % (A directory named "sources.csv" is used by tests to force write failure
+    % and should be handled by write_sources_csv via error.)
+    sourcesCsvPath = fullfile(outDir, "sources.csv");
+    if exist(sourcesCsvPath,"file")==2
+        try, delete(sourcesCsvPath); catch, end
+    end
+    % Delete CSV files only (avoid directories like "sources.csv/")
+    try
+        csvFiles = dir(fullfile(outDir, "*.csv"));
+        for i = 1:numel(csvFiles)
+            p = fullfile(csvFiles(i).folder, csvFiles(i).name);
+            if ~csvFiles(i).isdir
+                delete(p);
+            end
+        end
+    catch
+        % best-effort cleanup
+    end
     try, delete(fullfile(outDir, "*.json")); catch, end
     try, delete(fullfile(outDir, "*.txt")); catch, end
 else
@@ -225,22 +248,28 @@ manifest.matlab_release = version; % e.g., "9.18.0.1234567 (R2025b)"
 manifest.git_commit = get_git_commit_safe();
 manifest.errors = struct("skipped_missing_required", skippedMissingRequired);
 
+% v0.2: stabilize manifest.errors schema (always present, even if sources write fails)
+if string(schemaVersion) == "v0.2"
+    manifest.errors.sources_write_failed = false;
+    manifest.errors.sources_write_error_message = "";
+    manifest.errors.missing_primary_location_source_count = missingPrimarySource;
+    manifest.errors.missing_primary_location_source_id_count = missingPrimarySourceId;
+    manifest.errors.missing_primary_location_source_work_ids = cellstr(missingPrimarySourceWorkIds);
+end
+
 % ---------- v0.2: write sources.csv ----------
 if string(schemaVersion) == "v0.2"
     try
         srcStats = schema.v0_2.write_sources_csv(outDir, sourcesMap);
         manifest.written_sources = srcStats.written_sources;
         manifest.unique_sources = srcStats.unique_sources;
-        % Backward-compatible keys (kept for older scripts)
+        % Backward-compatible keys (kept for older scripts) - consider deprecating in v0.3
         manifest.errors.missing_primary_location_source = missingPrimarySource;
         manifest.errors.missing_primary_location_source_id = missingPrimarySourceId;
-
-        % Preferred keys (README-facing)
-        manifest.errors.missing_primary_location_source_count = missingPrimarySource;
-        manifest.errors.missing_primary_location_source_id_count = missingPrimarySourceId;
-        manifest.errors.missing_primary_location_source_work_ids = cellstr(missingPrimarySourceWorkIds);
     catch ME
-        manifest.errors.sources_write_failed = char(ME.message);
+        manifest.errors.sources_write_failed = true;
+        manifest.errors.sources_write_error_message = string(ME.message);
+        % Keep missing_* counts/work_ids already populated above.
     end
 end
 

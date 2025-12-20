@@ -1,0 +1,4 @@
+source_id,source_display_name,source_type,issn_l,is_oa,host_organization_id,works_count_seen
+https://openalex.org/S123,"Journal, ""Alpha""
+Line2",journal,1234-5678,1,https://openalex.org/I999,2
+https://openalex.org/S456,,,,,,0

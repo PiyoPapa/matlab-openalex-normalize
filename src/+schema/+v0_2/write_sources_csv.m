@@ -20,7 +20,12 @@ arguments
     sourcesMap {mustBeA(sourcesMap,"containers.Map")}
 end
 
+outDir = string(outDir);
 outPath = fullfile(outDir, "sources.csv");
+% Guard: sources.csv must not be a directory
+if isfolder(outPath)
+    error("sources.csv exists as a directory; cannot write CSV file: %s", outPath);
+end
 fid = fopen(outPath, "w");
 if fid < 0
     error("Failed to open for write: %s", outPath);
@@ -37,9 +42,13 @@ written = 0;
 for i = 1:numel(keys)
     k = char(keys(i));
     rec = sourcesMap(k);
+    if ~isstruct(rec)
+        % Defensive: unexpected payload
+        rec = struct("source_id", k);
+    end
 
     fprintf(fid, "%s,%s,%s,%s,%s,%s,%s\n", ...
-        csv_escape(rec.source_id), ...
+        csv_escape(getfield_or(rec,"source_id",k)), ...
         csv_escape(getfield_or(rec,"source_display_name","")), ...
         csv_escape(getfield_or(rec,"source_type","")), ...
         csv_escape(getfield_or(rec,"issn_l","")), ...
@@ -71,24 +80,44 @@ end
 
 function out = csv_escape(x)
     % Convert input to string and escape for CSV
+    % Handle missing explicitly
+    if ismissing(x)
+        out = "";
+        out = char(out);
+        return
+    end
+
     if isempty(x)
         out = "";
-        return;
+        out = char(out);
+        return
     end
-    % Normalize to string
-    if isstring(x)
-        out = x;
-    elseif ischar(x)
-        out = string(x);
-    else
-        out = string(x);
+    % Normalize to scalar string (defensive)
+    try
+        if isstring(x)
+            s = x;
+        elseif ischar(x)
+            s = string(x);
+        elseif isnumeric(x) || islogical(x)
+            s = string(x);
+        else
+            % last resort: try to stringify safely
+            s = string(x);
+        end
+    catch
+        s = "";
     end
+    if ~isscalar(s)
+        s = join(string(s(:)), " "); % collapse vector to one field
+    end
+    out = s;
     % Escape double quotes by doubling them
     out = replace(out, """", """""");
     % Quote field if it contains special chars
     if contains(out, ",") || contains(out, """") || contains(out, newline) || contains(out, char(13))
         out = """" + out + """";
     end
+    % Final safety: convert to char
     out = char(out);
 end
 
