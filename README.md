@@ -6,15 +6,40 @@ Normalize standard OpenAlex Works JSONL into fixed-schema CSVs in MATLAB (versio
 This repository converts **standard JSONL (1 Work per line)** into a small set of
 **versioned, analysis-ready CSVs**.
 
+> **Design intent (important)**
+>
+> This repository is designed as a **stable normalization core**.
+> It intentionally avoids downstream analytics, visualization,
+> large-scale graph construction, or GPU-heavy processing.
+>
+> The primary goal is to provide **reproducible, fixed-schema CSV outputs**
+> that can be safely used by researchers who are not data-engineering specialists.
+>
+> Heavy or exploratory analysis is expected to live in *separate repositories*
+> that consume the outputs of this project.
+
 > **Version note**
 >
 > The behavior described below reflects the implementation as of **v0.2.3**.
 > Minor v0.2.x releases may introduce optional, backward-compatible outputs.
- 
+
+> **Compatibility note**
+>
+> This repo is intended to consume "standard JSONL" generated from
+> `matlab-openalex-pipeline` (array-per-line JSONL must be converted first).
+> Recommended compatibility policy:
+> `matlab-openalex-pipeline >= v0.1.x` (fill in the minimum version you actually tested)
+
 It is intentionally separated from the data acquisition layer:
 
 - **Acquisition (fetch):**
   [`matlab-openalex-pipeline`](https://github.com/PiyoPapa/matlab-openalex-pipeline)
+
+Downstream / related projects:
+- **Topic mapping / clustering / visualization (GPU-heavy examples):**
+  `matlab-openalex-map` (optional; analysis examples / visualization)
+- **Citation graphs / reference edges (advanced users):**
+  `matlab-openalex-edges` (separate repository; not part of this repo)
 
 Related repos:
 - `matlab-openalex-pipeline` (fetch / cursor / array-per-line JSONL)
@@ -23,10 +48,12 @@ Related repos:
 ## Scope (What this repo does / does not do)
 ### Non-goals
 
-This project is **not** intended to be:
+This project is **explicitly NOT** intended to be:
 - a full-text mining or NLP pipeline
 - a citation-network or reference-graph analysis engine
 - a general-purpose OpenAlex client covering all use cases
+- a real-time monitoring system or research information OS
+- a GPU-accelerated analytics or embedding pipeline
 
 Instead, this repository focuses on:
 - stable, versioned normalization
@@ -40,9 +67,13 @@ Instead, this repository focuses on:
 - Keep IDs stable by using **OpenAlex URL strings** as primary keys (e.g., `work_id`, `author_id`, ...)
 
 ### This repo DOES NOT
+- Perform semantic analysis, embeddings, clustering, or topic modeling
+- Reconstruct or analyze abstracts / plaintext
+- Manage scheduled data collection or notifications
+- Provide dashboards or web-based interfaces
 - Fetch data from OpenAlex (use `matlab-openalex-pipeline`)
 - Provide downstream analysis / visualization
-- Build citation graphs by default (`references` is explicitly postponed)
+- Build citation graphs or reference edges
 
 ## Input format (Important)
 
@@ -164,6 +195,18 @@ without conditional existence checks, even when optional writers are enabled.
 > (e.g., institutions.csv, counts_by_year.csv) may be absent in earlier runs.
 > Downstream consumers MUST handle their absence gracefully.
 
+## Project positioning
+
+This repository represents the **normalization layer** in a larger OpenAlex-based workflow:
+
+1. **Acquisition** — fetch OpenAlex data (`matlab-openalex-pipeline`)
+2. **Normalization** — fixed-schema, versioned CSVs (**this repo**)
+3. **Exploration / mapping** — clustering, topic maps, visualization (separate repos)
+4. **Advanced analysis** — citation graphs, large-scale networks (separate repos)
+
+Keeping these layers separate is a deliberate design choice
+to minimize user error, maintenance burden, and accidental misuse.
+ 
 ## Schema versions
 ### v0.1 (Minimum stable set; fixed columns)
 
@@ -216,7 +259,7 @@ Also improves `run_manifest.json`:
 > - the failure is recorded in run_manifest.json.errors
 
 #### v0.2.x (optional additions)
-Introduced as optional, safe additions starting in v0.2.3:
+Introduced as optional, safe additions in v0.2.3:
 
 5. **institutions.csv**
    - Derived from authorships (institution-level analysis)
@@ -232,15 +275,13 @@ Introduced as optional, safe additions starting in v0.2.3:
    - Intended for quick time-series inspection and sanity checks
    - Optional output: normalization continues even if writing fails
 
-#### Out of scope for v0.2 (deferred to v0.3+)
-- references (row explosion; must be optional + limited)
-- abstracts / reconstructed plaintext fields
+## Out of scope
+The following items are intentionally excluded from this repository
+and will not be implemented here.
 
-### v0.3 (Planned; optional)
-
-- references.csv (Work × ReferencedWork)
-- Must be optional (default OFF)
-- Must provide a limiter (e.g., maxReferencesPerWork)
+- citation or reference edge tables (e.g., Work × ReferencedWork)
+- graph-style relationship outputs
+- large-scale row-exploding expansions
 
 ## Proposed column definitions (v0.1)
 
@@ -304,6 +345,17 @@ Example:
 addpath(genpath("src"));
 ```
 
+## What to do next
+
+After normalization, typical next steps include:
+- **Topic mapping / clustering / visualization**
+  - See: `matlab-openalex-map`
+  - GPU / toolbox requirements may apply
+
+- **Citation or reference analysis**
+  - See: `matlab-openalex-edges` (planned)
+  - Intended for advanced users handling large edge tables
+
 ## Quick start
 1.Convert pipeline JSONL to standard JSONL (if needed)
 
@@ -345,8 +397,8 @@ v0.1 produces exactly these fixed-schema CSVs:
 
 ### What does v0.2 add?
 v0.2 extends outputs (while keeping v0.1 unchanged).
-In v0.2.0, this includes `sources.csv`; additional CSVs such as `institutions.csv`
-may be introduced in minor v0.2.x releases as described above.
+In v0.2.0, this includes `sources.csv`.
+Optional CSVs introduced in v0.2.x are documented above.
 
 ### Does this repo deduplicate or "clean" OpenAlex data?
 No. It normalizes structure into a stable schema. If you need heavy cleaning/deduplication, do it downstream.
@@ -355,7 +407,8 @@ No. It normalizes structure into a stable schema. If you need heavy cleaning/ded
 Primary keys are kept stable using OpenAlex URL strings (e.g., `work_id`, `author_id`, `source_id`).
 
 ### Why are references not included?
-Because `references` can explode row counts. It is intentionally postponed and (if added) must be optional and limited.
+Because reference expansion can easily explode row counts and complexity.
+Such features are intentionally out of scope for this repository.
 
 ### Excel / UTF-8: why do characters break?
 CSVs are written in UTF-8. Excel on Windows may mis-detect encoding; select UTF-8 explicitly when opening.
