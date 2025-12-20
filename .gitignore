@@ -58,9 +58,15 @@ resources/project/**
 
 
 # ----------------------------
-# Sample inputs (OK to commit)
+# Sample inputs (keep small only)
 # ----------------------------
 data_raw/**
 !data_raw/.gitkeep
-!data_raw/*.jsonl
-!data_raw/*.standard.jsonl
+# Do NOT commit large raw dumps. Keep only small, curated samples.
+!data_raw/*_500.standard.jsonl
+!data_raw/*_1000.standard.jsonl
+
+# ----------------------------
+# Tests: generated outputs (DO NOT COMMIT)
+# ----------------------------
+tests/data_processed/**
