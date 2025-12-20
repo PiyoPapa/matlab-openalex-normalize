@@ -62,6 +62,7 @@ resources/project/**
 # ----------------------------
 data_raw/**
 !data_raw/.gitkeep
+!data_raw/openalex_MATLAB_cursor_en_500.jsonl
 # Do NOT commit large raw dumps. Keep only small, curated samples.
 !data_raw/*_500.standard.jsonl
 !data_raw/*_1000.standard.jsonl

@@ -5,8 +5,10 @@
 % - Run QA checks:
 %   works: required fields, fill-rate, OA consistency
 %   authorships: orphan rows, fill-rate, multi-institution loss estimate (first institution only)
+%   institutions (v0.2 optional): existence, orphan rows, required columns
 %   concepts: quick sanity
 %   sources (v0.2): existence, counts, missing primary_location.source rate (manifest)
+%   counts_by_year (v0.2 optional): existence, sum check vs works.csv
 %
 % Assumptions:
 %   - Current folder = repo root (matlab-openalex-normalize)
@@ -82,6 +84,12 @@ for f = expected
     fprintf("  %-18s : %s\n", f, ternary(isfile(p), "OK", "MISSING"));
 end
 assert(isfile(fullfile(outDir,"works.csv")), "works.csv missing. Stop.");
+% Optional outputs (v0.2 safe additions)
+opt = ["institutions.csv","counts_by_year.csv"];
+for f = opt
+    p = fullfile(outDir, f);
+    fprintf("  %-18s : %s (optional)\n", f, ternary(isfile(p), "OK", "MISSING"));
+end
 
 %% Step 5) QA: works.csv (required, fill-rate, OA consistency)
 fprintf("\n=== Step 5: QA works.csv ===\n");
@@ -126,8 +134,48 @@ if loss.nAuth_withInst > 0
     fprintf("multiInst rate among withInst = %.4f\n", loss.nAuth_multiInst / loss.nAuth_withInst);
 end
 
+%% Step 6b) QA: institutions.csv (v0.2 optional)
+fprintf("\n=== Step 6b: QA institutions.csv (v0.2 optional) ===\n");
+instPath = fullfile(outDir, "institutions.csv");
+if isfile(instPath)
+    I = readtable(instPath, "TextType","string");
+    fprintf("institutions rows = %d\n", height(I));
+
+    % Required columns (as writer header)
+    reqCols = ["work_id","author_id","institution_id","institution_display_name","country_code","ror"];
+    missCols = reqCols(~ismember(reqCols, string(I.Properties.VariableNames)));
+    if ~isempty(missCols)
+        error("institutions.csv missing required columns: %s", strjoin(missCols, ", "));
+    end
+
+    % Required fields should not be empty
+    missReq = [sum(I.work_id==""), sum(I.author_id==""), sum(I.institution_id=="")];
+    disp("institutions required missing [work_id, author_id, institution_id] = ");
+    disp(missReq);
+    assert(all(missReq==0), "Required fields missing in institutions.csv");
+
+    % Orphan works: institutions.work_id must exist in works.work_id
+    instOrphans = sum(~ismember(I.work_id, unique(T.work_id)));
+    fprintf("institutions orphan work_id rows = %d\n", instOrphans);
+    assert(instOrphans==0, "institutions.csv contains orphan work_id rows");
+else
+    % If missing, explain using manifest (optional writer should record errors)
+    if isstruct(manifest) && isfield(manifest,"errors") ...
+            && isfield(manifest.errors,"institutions_write_failed") ...
+            && manifest.errors.institutions_write_failed
+        msg = "";
+        if isfield(manifest.errors,"institutions_write_error_message")
+            msg = string(manifest.errors.institutions_write_error_message);
+        end
+        fprintf("institutions.csv is missing because writer failed. error_message=%s\n", msg);
+    else
+        fprintf("institutions.csv is missing (optional). No writer failure recorded in manifest.\n");
+    end
+end
+
 %% Step 7) QA: concepts.csv (quick sanity)
 fprintf("\n=== Step 7: QA concepts.csv ===\n");
+
 C = readtable(fullfile(outDir,"concepts.csv"), "TextType","string");
 fprintf("concepts rows = %d\n", height(C));
 
@@ -138,6 +186,47 @@ try
     fprintf("concept_level and concept_score look numeric-like (string->double ok)\n");
 catch
     fprintf("WARN: concept_level / concept_score numeric parsing failed; inspect CSV writing.\n");
+end
+%% Step 7b) QA: counts_by_year.csv (v0.2 optional)
+fprintf("\n=== Step 7b: QA counts_by_year.csv (v0.2 optional) ===\n");
+cbyPath = fullfile(outDir, "counts_by_year.csv");
+if isfile(cbyPath)
+    Y = readtable(cbyPath, "TextType","string");
+    fprintf("counts_by_year rows (unique years) = %d\n", height(Y));
+
+    reqCols = ["publication_year","works_count"];
+    missCols = reqCols(~ismember(reqCols, string(Y.Properties.VariableNames)));
+    if ~isempty(missCols)
+        error("counts_by_year.csv missing required columns: %s", strjoin(missCols, ", "));
+    end
+
+    % Basic numeric-like checks
+    try
+        yrs = str2double(string(Y.publication_year));
+        cnt = str2double(string(Y.works_count));
+        assert(all(isfinite(yrs)), "publication_year contains non-numeric values");
+        assert(all(isfinite(cnt)), "works_count contains non-numeric values");
+        fprintf("counts_by_year parse ok. min_year=%g max_year=%g total=%g\n", min(yrs), max(yrs), sum(cnt));
+    catch ME
+        error("counts_by_year numeric parsing failed: %s", ME.message);
+    end
+
+    % Sum check vs works.csv
+    total = sum(str2double(string(Y.works_count)));
+    fprintf("sum(counts_by_year.works_count) = %d, height(works) = %d\n", total, height(T));
+    assert(total == height(T), "counts_by_year total does not match works.csv row count");
+else
+    if isstruct(manifest) && isfield(manifest,"errors") ...
+            && isfield(manifest.errors,"counts_by_year_write_failed") ...
+            && manifest.errors.counts_by_year_write_failed
+        msg = "";
+        if isfield(manifest.errors,"counts_by_year_write_error_message")
+            msg = string(manifest.errors.counts_by_year_write_error_message);
+        end
+        fprintf("counts_by_year.csv is missing because writer failed. error_message=%s\n", msg);
+    else
+        fprintf("counts_by_year.csv is missing (optional). No writer failure recorded in manifest.\n");
+    end
 end
 %% Step 8) QA: sources.csv (v0.2)
 fprintf("\n=== Step 8: QA sources.csv (v0.2) ===\n");

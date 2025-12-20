@@ -25,6 +25,8 @@ arguments
     % v0.2 QA reproducibility: store up to N missing-source work_ids in manifest
     options.maxMissingWorkIds (1,1) double = 1000
 end
+assert(isfinite(options.maxRecords) && options.maxRecords > 0 || isinf(options.maxRecords), ...
+    "maxRecords must be a positive integer or Inf. Got: %s", string(options.maxRecords));
 
 schemaVersion = options.schemaVersion;
 if ~(schemaVersion == "v0.1" || schemaVersion == "v0.2")
@@ -81,19 +83,53 @@ concPath  = fullfile(outDir, "concepts.csv");
 fWorks = fopen(worksPath, "w");
 fAuth  = fopen(authPath,  "w");
 fConc  = fopen(concPath,  "w");
+fInst  = -1; % v0.2 optional: institutions.csv (streaming)
+instPath = fullfile(outDir, "institutions.csv");
 
 assert(fWorks > 0, "Failed to open for write: %s", worksPath);
 assert(fAuth  > 0, "Failed to open for write: %s", authPath);
 assert(fConc  > 0, "Failed to open for write: %s", concPath);
 
-% v0.1: counts_by_year is omitted (often empty in Works payload)
-c = onCleanup(@() cleanup_files(fidIn, fWorks, fAuth, fConc));
+% ---- FID handle (avoid onCleanup capturing stale numeric fids) ----
+fh = FidHandle();
+fh.fidIn  = fidIn;
+fh.fWorks = fWorks;
+fh.fAuth  = fAuth;
+fh.fConc  = fConc;
+fh.fInst  = fInst;
 
+% Cleanup MUST reference fh (handle), not raw numeric fids.
+% IMPORTANT: remove any old cleanup_files(...) that captures stale numeric ids.
+c = onCleanup(@() cleanup_files_handle(fh)); 
+ 
 % Write headers (v0.1 fixed columns per README)
 fprintf(fWorks, "work_id,doi,title,publication_year,publication_date,type,language,cited_by_count,is_oa,oa_status\n");
 fprintf(fAuth,  "work_id,author_id,author_display_name,author_orcid,author_position,is_corresponding,institution_id,institution_display_name,country_code\n");
 fprintf(fConc,  "work_id,concept_id,concept_display_name,concept_level,concept_score\n");
 % (no counts_by_year.csv in v0.1)
+
+% v0.2 optional: institutions.csv (streaming)
+institutionsOpenFailed = false;
+institutionsOpenErrorMessage = "";
+institutionsWriteFailed = false;
+institutionsWriteErrorMessage = "";
+institutionsWrittenRows = 0;
+if string(schemaVersion) == "v0.2"
+    try
+        fInst = fopen(instPath, "w");
+        if fInst <= 0
+            error("Failed to open for write: %s", instPath);
+        end
+        fprintf(fInst, "work_id,author_id,institution_id,institution_display_name,country_code,ror\n");
+        fh.fInst = fInst;
+    catch ME
+        % Optional + safe: keep running, record in manifest later
+        institutionsOpenFailed = true;
+        institutionsOpenErrorMessage = string(ME.message);
+        fInst = -1;
+        fh.fInst = -1;
+    end
+end
 
 % ---------- Counters ----------
 lineNo = 0;
@@ -113,9 +149,17 @@ end
 
 % If you want small logs, keep them bounded.
 logPath = fullfile(outDir, "normalize.log.txt");
-fidLog = fopen(logPath, "w");
-logCleanup = onCleanup(@() safe_fclose(fidLog));
+fidLog = -1;
+try
+    fidLog = fopen(logPath, "w");
+catch
+    fidLog = -1;
+end
+logCleanup = onCleanup(@() safe_fclose(fidLog)); 
 
+% Helper for "best-effort logging" (never crash because logging failed)
+logline = @(fmt,varargin) safe_log(fidLog, fmt, varargin{:});
+ 
 parseErrorLine = []; %#ok<NASGU>
 
 % ---------- Main streaming loop ----------
@@ -133,9 +177,8 @@ while true
     try
         w = jsondecode(line);
     catch ME
-        if fidLog > 0
-            fprintf(fidLog, "[ERROR] JSON parse failed at line %d: %s\n", lineNo, ME.message);
-        end
+        logline("[ERROR] JSON parse failed at line %d: %s\n", lineNo, ME.message);
+
         error("JSON parse failed at line %d: %s", lineNo, ME.message);
     end
 
@@ -151,10 +194,9 @@ while true
 
     if workId == "" || isnan(pubYear) || isnan(citedBy)
         skippedMissingRequired = skippedMissingRequired + 1;
-        if fidLog > 0
-            fprintf(fidLog, "[SKIP] missing required at line %d: id='%s', publication_year=%s, cited_by_count=%s\n", ...
-                lineNo, workId, num2str(pubYear), num2str(citedBy));
-        end
+        logline("[SKIP] missing required at line %d: id='%s', publication_year=%s, cited_by_count=%s\n", ...
+            lineNo, workId, num2str(pubYear), num2str(citedBy));
+
         continue
     end
 
@@ -207,8 +249,27 @@ while true
             write_authorships_rows(fAuth, workId, w.authorships);
         catch ME
             % Keep running: authorships are not required for v0.1 core.
-            if fidLog > 0
-                fprintf(fidLog, "[WARN] authorships write failed at line %d: %s\n", lineNo, ME.message);
+            logline("[WARN] authorships write failed at line %d: %s\n", lineNo, ME.message);
+ 
+        end
+        % ---------- institutions.csv (v0.2 optional, streaming) ----------
+        % 1 row per (work_id, author_id, institution_id) from authorships[].institutions[] (FULL expansion)
+        if string(schemaVersion) == "v0.2" && fInst > 0
+            try
+                n = schema.v0_2.write_institutions_rows(fInst, workId, w.authorships);
+                if ~isempty(n) && isnumeric(n) && isscalar(n)
+                    institutionsWrittenRows = institutionsWrittenRows + double(n);
+                end
+            catch ME
+                % Do NOT stop writing after the first error.
+                % Record failure once and keep streaming. This keeps the run "safe"
+                % while avoiding total loss from a single malformed record.
+                if ~institutionsWriteFailed
+                    institutionsWriteFailed = true;
+                    institutionsWriteErrorMessage = string(ME.message);
+                end
+                logline("[WARN] institutions write failed at line %d: %s\n", lineNo, ME.message);
+
             end
         end
     end
@@ -218,9 +279,8 @@ while true
         try
             write_concepts_rows(fConc, workId, w.concepts);
         catch ME
-            if fidLog > 0
-                fprintf(fidLog, "[WARN] concepts write failed at line %d: %s\n", lineNo, ME.message);
-            end
+            logline("[WARN] concepts write failed at line %d: %s\n", lineNo, ME.message);
+
         end
     end
 
@@ -252,6 +312,10 @@ manifest.errors = struct("skipped_missing_required", skippedMissingRequired);
 if string(schemaVersion) == "v0.2"
     manifest.errors.sources_write_failed = false;
     manifest.errors.sources_write_error_message = "";
+    manifest.errors.institutions_write_failed = false;
+    manifest.errors.institutions_write_error_message = "";
+    manifest.errors.counts_by_year_write_failed = false;
+    manifest.errors.counts_by_year_write_error_message = "";
     manifest.errors.missing_primary_location_source_count = missingPrimarySource;
     manifest.errors.missing_primary_location_source_id_count = missingPrimarySourceId;
     manifest.errors.missing_primary_location_source_work_ids = cellstr(missingPrimarySourceWorkIds);
@@ -270,6 +334,49 @@ if string(schemaVersion) == "v0.2"
         manifest.errors.sources_write_failed = true;
         manifest.errors.sources_write_error_message = string(ME.message);
         % Keep missing_* counts/work_ids already populated above.
+    end
+end
+
+% ---------- v0.2: finalize institutions.csv status (streaming) ----------
+if string(schemaVersion) == "v0.2"
+    if institutionsOpenFailed
+        manifest.errors.institutions_write_failed = true;
+        manifest.errors.institutions_write_error_message = institutionsOpenErrorMessage;
+    elseif institutionsWriteFailed
+        manifest.errors.institutions_write_failed = true;
+        manifest.errors.institutions_write_error_message = institutionsWriteErrorMessage;
+    else
+        manifest.written_institutions_rows = institutionsWrittenRows;
+    end
+end
+
+% ---------- v0.2: counts_by_year.csv (post) derived from works.csv ----------
+if string(schemaVersion) == "v0.2"
+    try
+        % Ensure works.csv is closed before reading on Windows.
+        % IMPORTANT: close once and set fid to -1 so cleanup_files won't double-close.
+        [fh.fWorks, closedOk] = safe_fclose_setneg1(fh.fWorks);
+        fWorks = fh.fWorks; % keep local consistent (optional)
+        if ~closedOk
+            error("Failed to close works.csv before counts_by_year post step.");
+        end
+        if ~isfile(worksPath)
+            error("works.csv not found for counts_by_year post step: %s", worksPath);
+        end
+        % If the file exists but is empty (header only), still allow writer to decide.
+        info = dir(worksPath);
+        if isempty(info) || info.bytes == 0
+            error("works.csv is empty for counts_by_year post step: %s", worksPath);
+        end
+        cbyStats = schema.v0_2.write_counts_by_year_csv(outDir, worksPath);
+        % Optional stats keys (writer-defined)
+        if isstruct(cbyStats)
+            if isfield(cbyStats,"written_rows"), manifest.written_counts_by_year_rows = cbyStats.written_rows; end
+            if isfield(cbyStats,"unique_years"), manifest.unique_years = cbyStats.unique_years; end
+        end
+    catch ME
+        manifest.errors.counts_by_year_write_failed = true;
+        manifest.errors.counts_by_year_write_error_message = string(ME.message);
     end
 end
 
@@ -292,9 +399,52 @@ for k = 1:numel(varargin)
 end
 end
 
+function cleanup_files_handle(fh)
+% Close any still-open fids safely; fid values are stored in a handle object,
+% so updates (e.g., set to -1 after manual close) are visible here.
+[fh.fidIn,  ~] = safe_fclose_setneg1(fh.fidIn);
+[fh.fWorks, ~] = safe_fclose_setneg1(fh.fWorks);
+[fh.fAuth,  ~] = safe_fclose_setneg1(fh.fAuth);
+[fh.fConc,  ~] = safe_fclose_setneg1(fh.fConc);
+[fh.fInst,  ~] = safe_fclose_setneg1(fh.fInst);
+end
+
 function safe_fclose(fid)
 if isnumeric(fid) && fid > 0
     fclose(fid);
+end
+end
+
+function safe_log(fid, fmt, varargin)
+% Never let logging break the pipeline.
+if ~(isnumeric(fid) && isscalar(fid) && fid > 0)
+    return
+end
+try
+    fprintf(fid, fmt, varargin{:});
+catch
+    % ignore
+end
+end
+
+function [fid, ok] = safe_fclose_setneg1(fid)
+% Close a file id once and invalidate it (set -1) to prevent double-close.
+% Returns:
+%   fid : -1 if closed (or already invalid), else original fid
+%   ok  : true if closed successfully or fid already invalid; false if fclose errored
+ok = true;
+if ~(isnumeric(fid) && isscalar(fid))
+    return
+end
+if fid <= 0
+    fid = -1;
+    return
+end
+try
+    fclose(fid);
+    fid = -1;
+catch
+    ok = false;
 end
 end
 
