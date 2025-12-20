@@ -71,3 +71,11 @@ data_raw/**
 # Tests: generated outputs (DO NOT COMMIT)
 # ----------------------------
 tests/data_processed/**
+
+# test run outputs (generated)
+tests/data_processed/
+tests/data_processed/**
+
+# timestamped test source runs
+tests/data_processed/TESTSRC_*/
+tests/data_processed/TESTSRC_*/**
