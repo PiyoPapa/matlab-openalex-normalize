@@ -37,8 +37,8 @@ It is intentionally separated from the data acquisition layer:
   [`matlab-openalex-pipeline`](https://github.com/PiyoPapa/matlab-openalex-pipeline)
 
 Downstream / related projects:
-- **Topic mapping / clustering / visualization (GPU-heavy examples):**
-  `matlab-openalex-map` (optional; analysis examples / visualization)
+- **Topic mapping / semantic exploration (Text Analytics / DL):**
+  [`matlab-openalex-topicmap`](https://github.com/PiyoPapa/matlab-openalex-topicmap)
 - **Citation graphs / reference edges (advanced users):**
   `matlab-openalex-edges` (separate repository; not part of this repo)
 
@@ -60,6 +60,10 @@ Instead, this repository focuses on:
 - stable, versioned normalization
 - reproducible metadata analysis
 - MATLAB-centric research and educational workflows
+
+Text reconstruction, semantic embeddings, clustering, and visualization
+are intentionally handled in a separate repository:
+`matlab-openalex-topicmap`.
 
 ### This repo DOES
 - Read **standard JSONL**: 1 line = 1 OpenAlex Work object
@@ -195,7 +199,7 @@ This repository represents the **normalization layer** in a larger OpenAlex-base
 
 1. **Acquisition** — fetch OpenAlex data (`matlab-openalex-pipeline`)
 2. **Normalization** — fixed-schema, versioned CSVs (**this repo**)
-3. **Exploration / mapping** — clustering, topic maps, visualization (separate repos)
+3. **Exploration / mapping** — topic maps, clustering, diagnostics (`matlab-openalex-topicmap`)
 4. **Advanced analysis** — citation graphs, large-scale networks (separate repos)
 
 Keeping these layers separate is a deliberate design choice
