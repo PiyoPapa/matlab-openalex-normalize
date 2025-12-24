@@ -37,10 +37,10 @@ It is intentionally separated from the data acquisition layer:
   [`matlab-openalex-pipeline`](https://github.com/PiyoPapa/matlab-openalex-pipeline)
 
 Downstream / related projects:
-- **Topic mapping / semantic exploration (Text Analytics / DL):**
-  [`matlab-openalex-topicmap`](https://github.com/PiyoPapa/matlab-openalex-topicmap)
-- **Citation graphs / reference edges (advanced users):**
-  `matlab-openalex-edges` (separate repository; not part of this repo)
+- **Analysis / topic mapping (Text Analytics / DL):**
+  [`matlab-openalex-analyze`](https://github.com/PiyoPapa/matlab-openalex-analyze)
+- **Advanced analysis (citation graphs, large-scale networks):**
+  Separate downstream repositories (out of scope here)
 
 Related repos:
 - `matlab-openalex-pipeline` (fetch / cursor / array-per-line JSONL)
@@ -63,7 +63,7 @@ Instead, this repository focuses on:
 
 Text reconstruction, semantic embeddings, clustering, and visualization
 are intentionally handled in a separate repository:
-`matlab-openalex-topicmap`.
+`matlab-openalex-analyze` (analysis / topic mapping layer).
 
 ### This repo DOES
 - Read **standard JSONL**: 1 line = 1 OpenAlex Work object
@@ -197,10 +197,12 @@ without conditional existence checks, even when optional writers are enabled.
 
 This repository represents the **normalization layer** in a larger OpenAlex-based workflow:
 
-1. **Acquisition** — fetch OpenAlex data (`matlab-openalex-pipeline`)
-2. **Normalization** — fixed-schema, versioned CSVs (**this repo**)
-3. **Exploration / mapping** — topic maps, clustering, diagnostics (`matlab-openalex-topicmap`)
-4. **Advanced analysis** — citation graphs, large-scale networks (separate repos)
+1. **Acquisition** — fetch OpenAlex data  
+   → `matlab-openalex-pipeline`
+2. **Normalization** — fixed-schema, versioned CSVs (**this repository**)
+3. **Analysis / topic mapping** — topic maps, clustering, diagnostics  
+   → `matlab-openalex-analyze`
+4. **Advanced analysis** — citation graphs, large-scale networks (separate repositories)
 
 Keeping these layers separate is a deliberate design choice
 to minimize user error, maintenance burden, and accidental misuse.
