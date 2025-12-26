@@ -7,18 +7,16 @@ OpenAlex metadata into versioned CSV files for reproducible,
 time-bounded exploratory use.
 
 ## Overview
-This repository is intended for professionals who need to transform OpenAlex
-Works metadata into stable, inspection-ready CSV files as part of a
-time-bounded exploratory workflow. It provides a conservative normalization
-layer with explicit schema versioning and reproducible run metadata.
+This repository provides a **conservative normalization layer** for transforming
+standard OpenAlex Works JSONL into **stable, inspection-ready CSV files** for
+time-bounded exploratory workflows.
 
-## What this repository provides (and what it doesn't)
-**Provides**
+**What this repository provides**
 - Deterministic normalization from standard OpenAlex JSONL (1 Work per line)
 - Fixed, versioned CSV schemas with stable primary keys
 - A required `run_manifest.json` capturing inputs, versions, and errors
 
-**Does NOT provide**
+**What this repository does NOT provide**
 - Data acquisition from OpenAlex
 - Semantic analysis, embeddings, clustering, or visualization
 - Citation graph construction or large-scale network processing
@@ -31,17 +29,33 @@ This repository represents the **normalization layer** in a three-stage workflow
    → [`matlab-openalex-pipeline`](https://github.com/PiyoPapa/matlab-openalex-pipeline)
 
 2. **Normalization** — fixed-schema, versioned CSVs (**this repository**)  
-   → `matlab-openalex-normalize`
+   → [`matlab-openalex-normalize`](https://github.com/PiyoPapa/matlab-openalex-normalize)
 
 3. **Analysis / topic mapping** — diagnostics and semantic maps  
    → [`matlab-openalex-analyze`](https://github.com/PiyoPapa/matlab-openalex-analyze)
  
-## Scope and design principles
-- Separation of concerns between acquisition, normalization, and analysis
-- Reproducibility through fixed schemas and explicit manifests
-- Conservative defaults that avoid row explosion and hidden transformations
-- MATLAB used as a pragmatic execution environment
- 
+## Who this repository is for
+This repository is for:
+- Users who already have **standard OpenAlex Works JSONL** and need **inspection-ready, fixed-schema CSVs**
+- Workflows that require **reproducible outputs** with explicit run metadata (`run_manifest.json`)
+
+This repository is NOT for:
+- Fetching data from OpenAlex (use `matlab-openalex-pipeline`)
+- Analysis / topic mapping (use `matlab-openalex-analyze`)
+
+## Scope and non-goals
+### In scope
+- Deterministic normalization from standard OpenAlex JSONL to fixed, versioned CSV schemas
+- Explicit run manifests capturing inputs, versions, and normalization errors
+
+### Out of scope
+- Data acquisition, semantic analysis, embeddings, clustering, visualization, or graph construction
+- Automated cleaning, deduplication, or optimization beyond schema normalization
+
+This repository prioritizes:
+- reproducibility over convenience
+- transparency over abstraction
+- explicit configuration over hidden defaults
 
 ## Repository layout
 - `src/` — core normalization logic and schema-specific writers
@@ -66,23 +80,13 @@ Examples in this repository are intentionally minimal and limited to
 normalization behavior and schema inspection. Analytical, visualization,
 or semantic examples are maintained in downstream repositories.
 
-## Intended use
-Use this repository when a reproducible, inspectable transformation from
-OpenAlex Works metadata into relational CSV tables is required, with explicit
-guarantees about schema stability and error reporting.
-
-## Relationship to other repositories
-This repository is designed to be used as part of a layered workflow:
-
-- **Acquisition**: OpenAlex data retrieval  
-  → `matlab-openalex-pipeline`
-- **Normalization**: fixed-schema, versioned CSVs  
-  → `matlab-openalex-normalize` (this repository)
-- **Analysis / topic mapping**: diagnostics and semantic analysis  
-  → `matlab-openalex-analyze`
-
-Each repository has a distinct responsibility; functionality is not duplicated
-across layers.
+## When to stop here / when to move on
+- You can stop here if:
+  - You only need stable, inspection-ready CSV exports (with a recorded manifest) for downstream use
+- You may proceed to the next stage if:
+  - You need diagnostics, semantic inspection, or topic mapping on normalized outputs  
+  → [`matlab-openalex-analyze`](https://github.com/PiyoPapa/matlab-openalex-analyze)
+ 
 
 ## Schema / column definitions
 
@@ -172,12 +176,11 @@ All opinions and implementations are solely those of the author.
 ## License 
 MIT License. See the LICENSE file for details. 
 
-## A note for contributors 
-This repository prioritizes: 
-- clarity over abstraction
+## Notes
+This repository prioritizes:
 - reproducibility over convenience
-- explicit configuration over magic defaults 
+- transparency over abstraction
+- explicit configuration over hidden defaults
 
-## Contact 
-This project is maintained on a best-effort basis and does not provide official support. 
-If you plan to extend it, please preserve these principles.
+This project is maintained on a best-effort basis and does not provide official support.
+For bug reports or questions, please use GitHub Issues.
