@@ -1,4 +1,6 @@
 # matlab-openalex-normalize
+**Language:** English | [日本語](README_ja.md)
+
 [![Open in MATLAB Online](https://www.mathworks.com/images/responsive/global/open-in-matlab-online.svg)](https://matlab.mathworks.com/open/github/v1?repo=PiyoPapa/matlab-openalex-normalize)
 
 Normalize standard OpenAlex Works JSONL into fixed-schema CSVs in MATLAB.
